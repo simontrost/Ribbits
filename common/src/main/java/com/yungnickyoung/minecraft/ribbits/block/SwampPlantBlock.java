@@ -1,7 +1,5 @@
 package com.yungnickyoung.minecraft.ribbits.block;
 
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -12,6 +10,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.BonemealableBlock;
+import net.minecraft.world.level.block.BonemealSource;
 import net.minecraft.world.level.block.VegetationBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
@@ -22,12 +21,6 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import java.util.Optional;
 
 public class SwampPlantBlock extends VegetationBlock implements BonemealableBlock {
-    public static final MapCodec<SwampPlantBlock> CODEC = RecordCodecBuilder.mapCodec(builder -> builder
-            .group(
-                    propertiesCodec(),
-                    ResourceKey.codec(Registries.PLACED_FEATURE).fieldOf("bonemeal_patch").forGetter(block -> block.bonemealPatch)
-            ).apply(builder, SwampPlantBlock::new));
-
     private static final VoxelShape SHAPE = Block.box(0.0, 0.0, 0.0, 16.0, 16.0, 16.0);
     private final ResourceKey<PlacedFeature> bonemealPatch;
 
@@ -43,17 +36,17 @@ public class SwampPlantBlock extends VegetationBlock implements BonemealableBloc
     }
 
     @Override
-    public boolean isValidBonemealTarget(LevelReader levelReader, BlockPos blockPos, BlockState blockState) {
+    public boolean isValidBonemealTarget(LevelReader levelReader, BlockPos blockPos, BlockState blockState, BonemealSource source) {
         return true;
     }
 
     @Override
-    public boolean isBonemealSuccess(Level level, RandomSource random, BlockPos blockPos, BlockState blockState) {
+    public boolean isBonemealSuccess(Level level, RandomSource random, BlockPos blockPos, BlockState blockState, BonemealSource source) {
         return true;
     }
 
     @Override
-    public void performBonemeal(ServerLevel serverLevel, RandomSource random, BlockPos blockPos, BlockState blockState) {
+    public void performBonemeal(ServerLevel serverLevel, RandomSource random, BlockPos blockPos, BlockState blockState, BonemealSource source) {
         Optional<PlacedFeature> placedFeature = serverLevel.registryAccess()
                 .lookupOrThrow(Registries.PLACED_FEATURE)
                 .getOptional(this.bonemealPatch);
@@ -61,8 +54,4 @@ public class SwampPlantBlock extends VegetationBlock implements BonemealableBloc
     }
 
 
-    @Override
-    protected MapCodec<? extends VegetationBlock> codec() {
-        return CODEC;
-    }
 }

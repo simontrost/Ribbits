@@ -3,7 +3,6 @@ package com.yungnickyoung.minecraft.ribbits.world.processor;
 import com.mojang.serialization.MapCodec;
 import com.yungnickyoung.minecraft.ribbits.module.BlockModule;
 import com.yungnickyoung.minecraft.ribbits.module.StructureProcessorTypeModule;
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.RandomSource;
@@ -13,15 +12,13 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 
 /**
  * Replaces lapis blocks with water and seagrass.
  * Ensures solid block under the water.
  */
-@MethodsReturnNonnullByDefault
-public class LapisBlockProcessor extends StructureProcessor {
+public class LapisBlockProcessor implements StructureProcessor {
     public static final LapisBlockProcessor INSTANCE = new LapisBlockProcessor();
     public static final MapCodec<LapisBlockProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
 
@@ -29,11 +26,11 @@ public class LapisBlockProcessor extends StructureProcessor {
     public StructureTemplate.StructureBlockInfo processBlock(LevelReader levelReader,
                                                              BlockPos jigsawPiecePos,
                                                              BlockPos jigsawPieceBottomCenterPos,
-                                                             StructureTemplate.StructureBlockInfo blockInfoLocal,
+                                                             BlockPos templateRelativePos,
                                                              StructureTemplate.StructureBlockInfo blockInfoGlobal,
                                                              StructurePlaceSettings structurePlacementData) {
         if (blockInfoGlobal.state().is(Blocks.LAPIS_BLOCK)) {
-            if (levelReader instanceof WorldGenRegion worldGenRegion && !worldGenRegion.getCenter().equals(new ChunkPos(blockInfoGlobal.pos()))) {
+            if (levelReader instanceof WorldGenRegion worldGenRegion && !worldGenRegion.getCenter().equals(new ChunkPos(blockInfoGlobal.pos().getX() >> 4, blockInfoGlobal.pos().getZ() >> 4))) {
                 return blockInfoGlobal;
             }
 
@@ -57,11 +54,7 @@ public class LapisBlockProcessor extends StructureProcessor {
     }
 
     @Override
-    protected StructureProcessorType<?> getType() {
-        return StructureProcessorTypeModule.LAPIS_BLOCK_PROCESSOR;
-    }
-
-    public static MapCodec<LapisBlockProcessor> codec() {
+    public MapCodec<LapisBlockProcessor> codec() {
         return CODEC;
     }
 }

@@ -1,73 +1,100 @@
 plugins {
-    id 'com.github.johnrengelman.shadow'
+    id 'net.fabricmc.fabric-loom'
+    id 'maven-publish'
 }
 
-architectury {
-    platformSetupLoomIde()
-    fabric()
+base { archivesName = 'ribbits-fabric' }
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(25) }
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+    options.encoding = 'UTF-8'
+}
+
+// Ribbits' old multi-loader build put shared Java/assets in common/.
+// Compile these sources directly as part of the only active Fabric module.
+sourceSets {
+    main {
+        java.srcDir(project(':fabric').file('../common/src/main/java'))
+        resources.srcDir(project(':fabric').file('../common/src/main/resources'))
+    }
 }
 
 loom {
-    accessWidenerPath = file("src/main/resources/ribbits.accessWidener")
-}
-
-configurations {
-    common {
-        canBeResolved = true
-        canBeConsumed = false
-    }
-    compileClasspath.extendsFrom common
-    runtimeClasspath.extendsFrom common
-    developmentFabric.extendsFrom common
-
-    // Files in this configuration will be bundled into your mod using the Shadow plugin.
-    // Don't use the `shadow` configuration from the plugin itself as it's meant for excluding files.
-    shadowBundle {
-        canBeResolved = true
-        canBeConsumed = false
-    }
+    accessWidenerPath = file('src/main/resources/ribbits.accesswidener')
 }
 
 repositories {
-    maven {
-        url "https://maven.terraformersmc.com/releases/"
-        content {
-            includeGroup "com.terraformersmc"
-        }
-    }
+    mavenCentral()
+    maven { url = 'https://maven.fabricmc.net/' }
+    maven { url = 'https://maven.shedaniel.me/' }
+    maven { url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' }
+    maven { url = 'https://maven.terraformersmc.com/releases/' }
 }
+
+// Compile against the independently built Minecraft 26.3 YUNG's API.
+// Expected layout: C:/dev/repo/Ribbits and C:/dev/repo/YUNGs-API.
+// Override with -PyungsApiJar=C:/path/to/YungsApi-Fabric-....jar.
+def yungsApiBinary
+if (project.hasProperty('yungsApiJar')) {
+    yungsApiBinary = file(project.property('yungsApiJar').toString())
+} else {
+    def candidates = fileTree(dir: rootProject.file('../YUNGs-API/Fabric/build/libs'),
+            includes: ['YungsApi-Fabric-*.jar'],
+            excludes: ['*-sources.jar', '*-javadoc.jar', '*-dev.jar', '*-shadow.jar', '*-dev-shadow.jar']).files
+    if (candidates.size() != 1) {
+        throw new GradleException("Expected exactly one YUNG's API 26.3 release JAR in ../YUNGs-API/Fabric/build/libs, found ${candidates.size()}. Build YUNG's API with :Fabric:build or specify -PyungsApiJar=<jar>.")
+    }
+    yungsApiBinary = candidates.first()
+}
+if (!yungsApiBinary.isFile()) {
+    throw new GradleException("YUNG's API jar missing: ${yungsApiBinary}")
+}
+println "Using local YUNG's API jar: ${yungsApiBinary}"
 
 dependencies {
-    modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
-
-    modImplementation "net.fabricmc.fabric-api:fabric-api:$rootProject.fabric_api_version"
-
-    modApi("me.shedaniel.cloth:cloth-config-fabric:$rootProject.cloth_version") {
-        exclude(group: "net.fabricmc")
-        exclude(group: "net.fabricmc.fabric-api")
+    minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
+    implementation("me.shedaniel.cloth:cloth-config-fabric:${rootProject.cloth_version}") {
+        exclude group: 'net.fabricmc'
+        exclude group: 'net.fabricmc.fabric-api'
     }
-    implementation("org.reflections:reflections:0.10.2")
-    implementation("org.javassist:javassist:3.29.2-GA")
-    modImplementation files("../libs/YungsApi-1.21.10-Fabric-5.4.0.jar")
-    modImplementation("com.terraformersmc:modmenu:${rootProject.modmenu_version}")
-    modImplementation "software.bernie.geckolib:geckolib-fabric-1.21.10:$rootProject.geckolib_version"
-    common(project(path: ':common', configuration: 'namedElements')) { transitive false }
-    shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
+    implementation "com.geckolib:geckolib-fabric-${rootProject.minecraft_version}:${rootProject.geckolib_version}"
+    // Mod Menu is optional for users but required to compile its integration.
+    compileOnly "com.terraformersmc:modmenu:${rootProject.modmenu_version}"
+    implementation 'org.reflections:reflections:0.10.2'
+    implementation 'org.javassist:javassist:3.29.2-GA'
+
+    // The 26.3 YUNG's API must be built separately first.
+    // It is NOT bundled into Ribbits; players must install both mods.
+    implementation files(yungsApiBinary)
 }
 
-processResources {
-    inputs.property 'version', project.version
+// The shared common and Fabric source sets both contain an identical icon.png.
+// processResources excludes duplicates already; sourcesJar needs the same policy.
+tasks.named('sourcesJar', Jar) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
 
+tasks.named('processResources') {
+    // Both common/ and fabric/ have an identical access-widener and icon.
+    // Preserve the Fabric copy and include the rest of the common resources.
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    inputs.property 'version', project.version
     filesMatching('fabric.mod.json') {
         expand version: project.version
     }
 }
 
-shadowJar {
-    configurations = [project.configurations.shadowBundle]
-    archiveClassifier = 'dev-shadow'
-}
-
-remapJar {
-    input.set shadowJar.archiveFile
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
 }

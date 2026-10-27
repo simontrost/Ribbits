@@ -1,6 +1,3 @@
-accessWidener v2 named
-
-accessible method net/minecraft/core/particles/SimpleParticleType <init> (Z)V
-accessible field net/minecraft/world/level/levelgen/Beardifier pieces Ljava/util/List;
-accessible field net/minecraft/world/level/levelgen/Beardifier junctions Ljava/util/List;
-accessible field net/minecraft/world/level/levelgen/Beardifier affectedBox Lnet/minecraft/world/level/levelgen/structure/BoundingBox;
+accessWidener v2 official
+# Ribbits 26.3: no widened access required for duplicated YUNG Beardifier fields.
+# Re-add only after verifying exact 26.3 names, descriptors and actual need.

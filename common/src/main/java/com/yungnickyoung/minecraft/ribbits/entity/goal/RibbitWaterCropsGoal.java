@@ -10,6 +10,7 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.BonemealableBlock;
+import net.minecraft.world.level.block.BonemealSource;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.EnumSet;
@@ -60,7 +61,7 @@ public class RibbitWaterCropsGoal extends Goal {
         if (this.ribbit.level().isDarkOutside()) return false;
 
         // Find the closest crop block that isn't fully grown
-        Optional<BlockPos> cropPos = BlockPos.findClosestMatch(this.ribbit.getOnPos(), (int) range, 5, blockPos ->
+        Optional<BlockPos> cropPos = RibbitPositionSearch.findClosest(this.ribbit.getOnPos(), (int) range, 5, blockPos ->
                 isValidCropBlock(this.ribbit.level(), blockPos, this.ribbit.level().getBlockState(blockPos)) && this.ribbit.getBuffCooldown() == 0);
 
         cropPos.ifPresent(blockPos -> this.targetCropPos = blockPos);
@@ -133,10 +134,10 @@ public class RibbitWaterCropsGoal extends Goal {
     private static void tryGrowCropAtPos(Level level, BlockPos pos) {
         BlockState blockState = level.getBlockState(pos);
         if (blockState.is(BlockTags.CROPS) && blockState.getBlock() instanceof BonemealableBlock bonemealableBlock) {
-            if (bonemealableBlock.isValidBonemealTarget(level, pos, blockState)) {
+            if (bonemealableBlock.isValidBonemealTarget(level, pos, blockState, BonemealSource.MOB)) {
                 if (level instanceof ServerLevel serverLevel) {
-                    if (bonemealableBlock.isBonemealSuccess(level, level.random, pos, blockState)) {
-                        bonemealableBlock.performBonemeal(serverLevel, level.random, pos, blockState);
+                    if (bonemealableBlock.isBonemealSuccess(level, level.getRandom(), pos, blockState, BonemealSource.MOB)) {
+                        bonemealableBlock.performBonemeal(serverLevel, level.getRandom(), pos, blockState, BonemealSource.MOB);
                         serverLevel.sendParticles(ParticleTypes.FALLING_WATER, pos.getX() + 0.5, pos.getY() + 0.6d, pos.getZ() + 0.5, 8, 0.0d, 0.0d, 0.0d, 0.0d);
                     }
                 }
@@ -147,7 +148,7 @@ public class RibbitWaterCropsGoal extends Goal {
     private static boolean isValidCropBlock(LevelReader levelReader, BlockPos blockPos, BlockState blockState) {
         return blockState.is(BlockTags.CROPS)
                 && blockState.getBlock() instanceof BonemealableBlock bonemealableBlock
-                && bonemealableBlock.isValidBonemealTarget(levelReader, blockPos, blockState);
+                && bonemealableBlock.isValidBonemealTarget(levelReader, blockPos, blockState, BonemealSource.MOB);
     }
 
     private Iterable<BlockPos> getNearbyPositions() {

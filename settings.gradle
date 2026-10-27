@@ -1,14 +1,12 @@
 pluginManagement {
     repositories {
-        maven { url "https://maven.fabricmc.net/" }
-        maven { url "https://maven.architectury.dev/" }
-        maven { url "https://files.minecraftforge.net/maven/" }
+        maven { url = 'https://maven.fabricmc.net/' }
         gradlePluginPortal()
+        mavenCentral()
     }
 }
 
 rootProject.name = 'ribbits'
-
-include 'common'
+// 26.3 currently targets only Fabric. The legacy common sources are included in
+// fabric/sourceSets to avoid running the old Architectury / NeoForge toolchain.
 include 'fabric'
-include 'neoforge'

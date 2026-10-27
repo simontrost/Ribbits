@@ -3,60 +3,70 @@ package com.yungnickyoung.minecraft.ribbits.mixin.mixins.client.maraca;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.yungnickyoung.minecraft.ribbits.client.render.MaracaInHandRenderer;
 import com.yungnickyoung.minecraft.ribbits.module.ItemModule;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.renderer.ItemInHandRenderer;
+import net.minecraft.client.renderer.FirstPersonHandsAndItemsRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.state.AvatarRenderState;
+import net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState;
+import net.minecraft.client.renderer.state.level.PlayerRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(ItemInHandRenderer.class)
+/**
+ * Keeps Ribbits' first-person maraca shake animation with Minecraft 26.3's
+ * FirstPersonHandsAndItemsRenderer (which replaced ItemInHandRenderer).
+ *
+ * The injection runs immediately after vanilla pushes the item pose.  We
+ * render only the active maraca on that pose, pop it, and cancel the rest;
+ * other items continue on the unchanged vanilla rendering path.
+ *
+ * The class/file name remains unchanged to preserve ribbits.mixins.json.
+ */
+@Mixin(FirstPersonHandsAndItemsRenderer.class)
 public abstract class ItemInHandRendererMixin {
-    @Shadow
-    protected abstract void applyItemArmTransform(PoseStack $$0, HumanoidArm $$1, float $$2);
-
-    @Shadow
-    @Final
-    private Minecraft minecraft;
-
-    @Shadow
-    public abstract void renderItem(LivingEntity livingEntity, ItemStack itemStack, ItemDisplayContext itemDisplayContext, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int i);
-
-    @Inject(method = "renderArmWithItem",
-            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", shift = At.Shift.AFTER),
-            cancellable = true)
-    private void ribbits$renderArmWithItem(AbstractClientPlayer player, float partialTick, float interpPitch,
-                                           InteractionHand hand, float swingProgress, ItemStack handItem,
-                                           float equipProgress, PoseStack poseStack, SubmitNodeCollector submitNodeCollector,
-                                           int packedLight, CallbackInfo ci) {
-        if (!player.isScoping()) {
-            boolean isMainHand = hand == InteractionHand.MAIN_HAND;
-            HumanoidArm arm = isMainHand ? player.getMainArm() : player.getMainArm().getOpposite();
-            boolean isRightArm = arm == HumanoidArm.RIGHT;
-            if (handItem.is(ItemModule.MARACA.get())) {
-                if (player.isUsingItem() && player.getUseItemRemainingTicks() > 0 && player.getUsedItemHand() == hand) {
-                    this.applyMaracaTransform(poseStack, partialTick, arm, handItem, equipProgress);
-                    this.renderItem(player, handItem, isRightArm ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND : ItemDisplayContext.FIRST_PERSON_LEFT_HAND, poseStack, submitNodeCollector, packedLight);
-                    poseStack.popPose();
-                    ci.cancel();
-                }
-            }
+    @Inject(
+            method = "submitArmWithItem",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V",
+                    shift = At.Shift.AFTER
+            ),
+            cancellable = true
+    )
+    private void ribbits$submitArmWithItem(PlayerRenderState playerState,
+                                          FirstPersonHandsAndItemsRenderState state,
+                                          float partialTicks, float xRot,
+                                          InteractionHand hand, float attack,
+                                          ItemStack itemStack, float inverseArmHeight,
+                                          PoseStack poseStack,
+                                          SubmitNodeCollector submitNodeCollector,
+                                          int lightCoords, CallbackInfo ci) {
+        AvatarRenderState avatar = playerState.avatarRenderState;
+        if (avatar == null || state.isScoping || !itemStack.is(ItemModule.MARACA.get())
+                || !avatar.isUsingItem || state.useItemRemainingTicks <= 0
+                || avatar.useItemHand != hand) {
+            return;
         }
-    }
 
-    @Unique
-    private void applyMaracaTransform(PoseStack poseStack, float partialTick, HumanoidArm arm, ItemStack handItem, float equipProgress) {
-        this.applyItemArmTransform(poseStack, arm, equipProgress);
-        MaracaInHandRenderer.applyMaracaTransform(poseStack, partialTick, arm, handItem, equipProgress);
+        boolean isMainHand = hand == InteractionHand.MAIN_HAND;
+        HumanoidArm arm = isMainHand ? avatar.mainArm : avatar.mainArm.getOpposite();
+        int side = arm == HumanoidArm.RIGHT ? 1 : -1;
+
+        // Vanilla 26.3 applyItemArmTransform, replicated rather than shadowing
+        // a private Minecraft method. The maraca keeps the original equip pose.
+        poseStack.translate(side * 0.56F, -0.52F - inverseArmHeight * 0.6F, -0.72F);
+        MaracaInHandRenderer.applyMaracaTransform(poseStack, partialTicks, arm, itemStack, inverseArmHeight);
+
+        (isMainHand ? state.mainHandRenderState : state.offHandRenderState)
+                .submit(poseStack, submitNodeCollector, lightCoords, OverlayTexture.NO_OVERLAY, 0);
+
+        // The vanilla pushPose() has already executed at the injection site.
+        poseStack.popPose();
+        ci.cancel();
     }
 }

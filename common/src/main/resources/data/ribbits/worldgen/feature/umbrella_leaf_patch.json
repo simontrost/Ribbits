@@ -1,0 +1,9 @@
+{
+  "type": "ribbits:vegetation_block_feature",
+  "on_solid_state_provider": {
+    "type": "minecraft:simple",
+    "state": {
+      "id": "ribbits:umbrella_leaf"
+    }
+  }
+}

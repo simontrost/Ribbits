@@ -1,0 +1,40 @@
+{
+  "type": "ribbits:vegetation_block_feature",
+  "on_solid_state_provider": {
+    "type": "minecraft:weighted",
+    "entries": [
+      {
+        "weight": 1,
+        "data": {
+          "id": "ribbits:umbrella_leaf"
+        }
+      },
+      {
+        "weight": 3,
+        "data": {
+          "id": "ribbits:toadstool"
+        }
+      },
+      {
+        "weight": 1,
+        "data": {
+          "id": "ribbits:swamp_daisy"
+        }
+      }
+    ]
+  },
+  "on_liquid_state_provider": {
+    "type": "minecraft:simple",
+    "state": {
+      "id": "ribbits:giant_lilypad"
+    }
+  },
+  "cannot_place_on": [
+    {
+      "id": "minecraft:podzol"
+    },
+    {
+      "id": "minecraft:coarse_dirt"
+    }
+  ]
+}

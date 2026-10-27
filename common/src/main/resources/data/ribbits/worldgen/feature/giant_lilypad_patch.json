@@ -1,0 +1,9 @@
+{
+  "type": "ribbits:vegetation_block_feature",
+  "on_liquid_state_provider": {
+    "type": "minecraft:simple",
+    "state": {
+      "id": "ribbits:giant_lilypad"
+    }
+  }
+}

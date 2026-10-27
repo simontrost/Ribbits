@@ -10,7 +10,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.FireBlock;
+import net.fabricmc.fabric.api.registry.FlammableBlockRegistry;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -18,8 +18,7 @@ import java.util.List;
 public class FabricPlatformHelper implements IPlatformHelper {
     @Override
     public void setBlockAsFlammable(Block block, int igniteChance, int burnChance) {
-        FireBlock fireBlock = (FireBlock) Blocks.FIRE;
-        fireBlock.setFlammable(block, igniteChance, burnChance);
+        FlammableBlockRegistry.getDefaultInstance().add(block, igniteChance, burnChance);
     }
 
     @Override

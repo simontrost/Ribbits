@@ -8,7 +8,6 @@ import com.yungnickyoung.minecraft.ribbits.entity.trade.AmethystForItems;
 import com.yungnickyoung.minecraft.ribbits.entity.trade.EnchantedItemForAmethyst;
 import com.yungnickyoung.minecraft.ribbits.entity.trade.ItemListing;
 import com.yungnickyoung.minecraft.ribbits.entity.trade.ItemsForAmethysts;
-import net.minecraft.Util;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.MerchantOffer;
 
@@ -16,7 +15,12 @@ import java.util.HashSet;
 import java.util.Map;
 
 public class RibbitTradeModule {
-    public static final Map<RibbitProfession, ItemListing[]> TRADES_BY_PROFESSION = Util.make(Maps.newHashMap(), (map) -> {
+    private static <T> T make(T value, java.util.function.Consumer<T> initializer) {
+        initializer.accept(value);
+        return value;
+    }
+
+    public static final Map<RibbitProfession, ItemListing[]> TRADES_BY_PROFESSION = make(Maps.newHashMap(), (map) -> {
         map.put(RibbitProfessionModule.MERCHANT, new ItemListing[]{
                 new ItemsForAmethysts(BlockModule.BROWN_TOADSTOOL.get().asItem(), 1, 1, 8, 16, 32),
                 new ItemsForAmethysts(BlockModule.RED_TOADSTOOL.get().asItem(), 1, 1, 8, 16, 32),

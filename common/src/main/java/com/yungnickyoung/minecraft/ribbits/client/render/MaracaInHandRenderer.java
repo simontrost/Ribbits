@@ -32,6 +32,6 @@ public class MaracaInHandRenderer {
             poseStack.translate(.25, .1, .25F);
         }
         poseStack.translate(0.0, 0.0, movement);
-        poseStack.mulPose(Axis.XP.rotationDegrees(xRot));
+        poseStack.mulPose(new org.joml.Matrix4f().rotateX((float) Math.toRadians(xRot)));
     }
 }

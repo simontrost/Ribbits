@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.ribbits.world.processor;
 
 import com.mojang.serialization.MapCodec;
 import com.yungnickyoung.minecraft.ribbits.module.StructureProcessorTypeModule;
-import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -11,7 +10,6 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import org.jetbrains.annotations.NotNull;
 
@@ -19,7 +17,12 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Fills brewing stands with ingredients and potions.
  */
-public class BrewingStandProcessor extends StructureProcessor {
+public class BrewingStandProcessor implements StructureProcessor {
+    private static <T> T make(T value, java.util.function.Consumer<T> initializer) {
+        initializer.accept(value);
+        return value;
+    }
+
     public static final BrewingStandProcessor INSTANCE = new BrewingStandProcessor();
     public static final MapCodec<BrewingStandProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
 
@@ -27,7 +30,7 @@ public class BrewingStandProcessor extends StructureProcessor {
     public StructureTemplate.StructureBlockInfo processBlock(LevelReader levelReader,
                                                              BlockPos jigsawPiecePos,
                                                              BlockPos jigsawPieceBottomCenterPos,
-                                                             StructureTemplate.StructureBlockInfo blockInfoLocal,
+                                                             BlockPos templateRelativePos,
                                                              StructureTemplate.StructureBlockInfo blockInfoGlobal,
                                                              StructurePlaceSettings structurePlacementData) {
         if (blockInfoGlobal.state().getBlock() == Blocks.BREWING_STAND) {
@@ -52,11 +55,7 @@ public class BrewingStandProcessor extends StructureProcessor {
 
 
     @Override
-    protected @NotNull StructureProcessorType<?> getType() {
-        return StructureProcessorTypeModule.BREWING_STAND_PROCESSOR;
-    }
-
-    public static MapCodec<BrewingStandProcessor> codec() {
+    public @NotNull MapCodec<? extends StructureProcessor> codec() {
         return CODEC;
     }
 
@@ -76,17 +75,17 @@ public class BrewingStandProcessor extends StructureProcessor {
     private void addBrewingRecipe(ListTag itemsListTag, String inputItemId, String outputPotionId,
                                   int maxInputCount, float bonusOutputChance, RandomSource randomSource) {
         // Input item
-        itemsListTag.add(Util.make(new CompoundTag(), itemTag -> {
+        itemsListTag.add(make(new CompoundTag(), itemTag -> {
             putInputItem(itemTag, inputItemId, (byte) (randomSource.nextInt(maxInputCount) + 1));
         }));
 
         // Guaranteed output item
-        itemsListTag.add(Util.make(new CompoundTag(), itemTag -> putPotionInSlot(itemTag, (byte) 1, outputPotionId)));
+        itemsListTag.add(make(new CompoundTag(), itemTag -> putPotionInSlot(itemTag, (byte) 1, outputPotionId)));
 
         // Bonus output item
         if (randomSource.nextFloat() < bonusOutputChance) {
             int bonusSlot = randomSource.nextBoolean() ? 0 : 2;
-            itemsListTag.add(Util.make(new CompoundTag(), itemTag -> putPotionInSlot(itemTag, (byte) bonusSlot, outputPotionId)));
+            itemsListTag.add(make(new CompoundTag(), itemTag -> putPotionInSlot(itemTag, (byte) bonusSlot, outputPotionId)));
         }
     }
 
@@ -100,8 +99,8 @@ public class BrewingStandProcessor extends StructureProcessor {
         itemTag.putByte("Slot", slot);
         itemTag.putString("id", "minecraft:potion");
         itemTag.putByte("count", (byte) 1);
-        itemTag.put("components", Util.make(new CompoundTag(), componentsTag -> {
-            componentsTag.put("minecraft:potion_contents", Util.make(new CompoundTag(), potionContentsTag -> {
+        itemTag.put("components", make(new CompoundTag(), componentsTag -> {
+            componentsTag.put("minecraft:potion_contents", make(new CompoundTag(), potionContentsTag -> {
                 potionContentsTag.putString("potion", potionId);
             }));
         }));

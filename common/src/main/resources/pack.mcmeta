@@ -1,6 +1,13 @@
 {
-    "pack": {
-        "description": "Ribbits resources",
-        "pack_format": 34
-    }
+  "pack": {
+    "description": "Ribbits 26.3 port resources",
+    "min_format": [
+      97,
+      1
+    ],
+    "max_format": [
+      121,
+      0
+    ]
+  }
 }
